@@ -1,0 +1,495 @@
+using System;
+using System.Linq;
+using System.Collections.Generic;
+
+namespace DuplicateCode
+{
+
+
+    public enum MainMenu
+    {
+        AddCategory,
+        DeleteCategory,
+        AddTasks,
+        DeleteTasks,
+        CompleteTasks,
+        ChangePriority,
+        SetDate,
+        ChangePlace,
+        MoveTask,
+        Exit
+    }
+
+    public enum Priority
+    {
+        Low,
+        Medium,
+        High,
+        Complete
+    }
+
+    public static class Input
+    {
+        public static string ReadString(string prompt)
+        {
+            Console.WriteLine(prompt);
+            Console.WriteLine("|>");
+            return Console.ReadLine();
+        }
+
+        public static int ReadInt(string prompt)
+        {
+            string inp = ReadString(prompt);
+            int outp;
+            while (!int.TryParse(inp, out outp))
+            {
+                Console.WriteLine("Whole number only");
+                break;
+            }
+            return Convert.ToInt32(inp);
+        }
+
+        public static int ReadInt(string prompt, int min, int max)
+        {
+            int inp = ReadInt(prompt);
+            while (inp < min || inp > max)
+            {
+                Console.WriteLine("Enter a number between 0 to 1", min, max);
+                inp = ReadInt(prompt);
+            }
+            return inp;
+
+        }
+
+        public class Display
+        {
+            public string Descriptions { get; set; }
+            public Priority PriorityLevel { get; set; }
+            public DateTime DueDate { get; set; }
+
+            public Display(string descriptions, DateTime dueDate, Priority priority = Priority.Medium)
+            {
+                Descriptions = descriptions;
+                PriorityLevel = priority;
+                DueDate = dueDate;
+            }
+
+            public ConsoleColor GetColour()
+            {
+                switch (PriorityLevel)
+                {
+                    case Priority.Low:
+                        return ConsoleColor.Green;
+                    case Priority.Medium:
+                        return ConsoleColor.Yellow;
+                    case Priority.High:
+                        return ConsoleColor.DarkRed;
+                    default:
+                        return ConsoleColor.Gray;
+                }
+            }
+        }
+        public class GoalsList
+        {
+            private List<Display> _goals;
+
+            public GoalsList()
+            {
+                _goals = new List<Display>();
+            }
+
+            public void AddTask(Display goal)
+            {
+                _goals.Add(goal);
+            }
+
+            public void DeleteTask(Display goal)
+            {
+                _goals.Remove(goal);
+            }
+
+            public void ChangePriority(int oldValue, int newValue)
+            {
+                Display goal = new Display(_goals[oldValue].Descriptions, _goals[oldValue].DueDate, _goals[oldValue].PriorityLevel);
+                _goals.Remove(_goals[oldValue]);
+                _goals.Insert(newValue, goal);
+            }
+            public int Count()
+            {
+                return _goals.Count;
+            }
+
+            public Display GoalsFor(int index)
+            {
+                try
+                {
+                    return _goals[index];
+                }
+                catch (IndexOutOfRangeException)
+                {
+                    throw;
+                }
+            }
+
+        }
+        public class GoalsHub
+        {
+            public Dictionary<string, GoalsList> _Hub;
+
+            public GoalsHub()
+            {
+                _Hub = new Dictionary<string, GoalsList>();
+            }
+
+            public void AddCategory(string category)
+            {
+                GoalsList goals = new GoalsList();
+                _Hub.Add(category, goals);
+            }
+
+            public void DeleteCategory(string category)
+            {
+                _Hub.Remove(category);
+            }
+
+            public void MoveTask(Display goal, string oldValue, String newValue)
+            {
+                _Hub[oldValue].DeleteTask(goal);
+                _Hub[newValue].AddTask(goal);
+            }
+
+            public int MaximumLength()
+            {
+                return _Hub.Values.Max(list => list.Count());
+            }
+
+            public GoalsList GetGoalsList(string category)
+            {
+                return _Hub[category];
+            }
+
+            public bool ContainsKey(string category)
+            {
+                return _Hub.ContainsKey(category);
+            }
+
+            public void Print()
+            {
+                Console.ForegroundColor = ConsoleColor.Green;
+                Console.WriteLine(new string(' ', 12) + "CATEGORIES");
+                Console.WriteLine(new string(' ', 10) + new string('-', 51 * _Hub.Count));
+                Console.WriteLine("{0,10}", "No.");
+                foreach (var category in _Hub.Keys)
+                {
+                    Console.WriteLine("{0,-50}|", category);
+                }
+                Console.WriteLine(new string(' ', 10) + new string('-', 51 * _Hub.Count));
+                for (int i = 0; i < MaximumLength(); i++)
+                {
+                    Console.WriteLine("{0,10}|", i + 1);
+                    foreach (var list in _Hub.Values)
+                    {
+                        if (list.Count() > i)
+                        {
+                            Console.ForegroundColor = list.GoalsFor(i).GetColour();
+                            if (list.GoalsFor(i).DueDate <= DateTime.Today && list.GoalsFor(i).PriorityLevel != Priority.Complete)
+                            {
+                                Console.BackgroundColor = ConsoleColor.Red;
+                                Console.BackgroundColor = ConsoleColor.White;
+                            }
+                            Console.Write("{0, -30}{1,20}", list.GoalsFor(i).Descriptions, list.GoalsFor(i).DueDate.ToString("d"));
+                            Console.ResetColor();
+                            Console.ForegroundColor = ConsoleColor.Green;
+                            Console.Write("|>");
+                        }
+                        else
+                        {
+                            Console.Write("{0, -50}", "Empty");
+                        }
+                        Console.WriteLine();
+                    }
+                    Console.ResetColor();
+                }
+            }
+
+            public class GoalControl
+            {
+                private GoalsHub _hub;
+                private MainMenu _choice;
+
+
+                public GoalControl()
+                {
+                    _hub = new GoalsHub();
+                }
+
+                static void Print()
+                {
+                    Console.WriteLine("\n" + new string('-', 30));
+                    Console.WriteLine("||{0,-26}||", "Main Menu:");
+                    Console.WriteLine("||{0,-26}||", "-", 30);
+                    Console.WriteLine("||{0,-26}||", "1: AddCategory:");
+                    Console.WriteLine("||{0,-26}||", "2: DeleteCategory:");
+                    Console.WriteLine("||{0,-26}||", "3: AddTasks:");
+                    Console.WriteLine("||{0,-26}||", "4: DeleteTasks:");
+                    Console.WriteLine("||{0,-26}||", "5: CompleteTasks:");
+                    Console.WriteLine("||{0,-26}||", "6: ChangePriority:");
+                    Console.WriteLine("||{0,-26}||", "7: SetDate:");
+                    Console.WriteLine("||{0,-26}||", "8: ChangePlace:");
+                    Console.WriteLine("||{0,-26}||", "9: MoveTask:");
+                    Console.WriteLine("||{0,-26}||", "10: Exit:");
+                    Console.WriteLine(new string('-', 30));
+                }
+                static MainMenu ReadUserOption()
+                {
+                    int choice = Input.ReadInt("\nChoose a menu option:",
+                     1, Enum.GetNames(typeof(MainMenu)).Length);
+                    return (MainMenu)choice - 1;
+                }
+
+                public GoalsList SelectGoal()
+                {
+                    string category = Input.ReadString("Enter name of category");
+                    while (!_hub.ContainsKey(category))
+                    {
+                        Console.WriteLine("That is invalid ");
+                        category = Input.ReadString("Enter name of category");
+                    }
+                    return _hub.GetGoalsList(category);
+
+                }
+
+                public Display ChooseGoal(GoalsList goalslist)
+                {
+                    int choose = Input.ReadInt("Item NO.", 1, goalslist.Count());
+                    return goalslist.GoalsFor(choose - 1);
+
+                }
+
+                public void Start()
+                {
+                    _hub.AddCategory("work");
+                    _hub.AddCategory("family");
+                    _hub.AddCategory("personal");
+
+                    do
+                    {
+                        Console.Clear();
+                        _hub.Print();
+                        Print();
+                        _choice = ReadUserOption();
+
+
+                        switch (_choice)
+                        {
+                            case MainMenu.AddCategory:
+
+                                string category = Input.ReadString("Name of the category");
+                                if (!_hub.ContainsKey(category))
+                                    _hub.AddCategory(category);
+                                break;
+
+                            case MainMenu.DeleteCategory:
+
+                                category = Input.ReadString("Name of the category");
+                                if (!_hub.ContainsKey(category))
+                                    _hub.DeleteCategory(category);
+                                break;
+
+                            case MainMenu.AddTasks:
+                                GoalsList goalslist = SelectGoal();
+                                string description = Input.ReadString( "Describe your task below (max. 30 symbols).");
+                                if (description.Length > 30)
+                                {
+                                    description = description.Substring(0, 30);
+                                }
+                                DateTime dueDate = DateTime.Now;
+                                goalslist.AddTask(new Display(description, dueDate.AddDays(1)));
+                                break;
+
+                            case MainMenu.CompleteTasks:
+
+                                goalslist = SelectGoal();
+                                Display goal = ChooseGoal(goalslist);
+                                goal.PriorityLevel = Priority.Complete;
+                                break;
+
+                            case MainMenu.DeleteTasks:
+                                goalslist = SelectGoal();
+                                if (goalslist.Count() != 0)
+                                {
+                                    goal = ChooseGoal(goalslist);
+                                    goalslist.DeleteTask(goal);
+                                }
+                                break;
+
+                            case MainMenu.ChangePriority:
+                                goalslist = SelectGoal();
+                                goal = ChooseGoal(goalslist);
+                                string PriorityLevel = Input.ReadString("Enter new importance");
+                                switch (PriorityLevel.ToLower())
+                                {
+                                    case "low":
+                                        goal.PriorityLevel = Priority.Low;
+                                        break;
+                                    case "medium":
+                                        goal.PriorityLevel = Priority.Medium;
+                                        break;
+                                    case "high":
+                                        goal.PriorityLevel = Priority.High;
+                                        break;
+                                    case "complete":
+                                        goal.PriorityLevel = Priority.Complete;
+                                        break;
+                                    default:
+                                        break;
+                                }
+                                break;
+
+                            case MainMenu.SetDate:
+                                goalslist = SelectGoal();
+                                goal = ChooseGoal(goalslist);
+                                string date = Input.ReadString("Enter due date \'YYYY-MM-DD\'");
+                                goal.DueDate = DateTime.Parse(date);
+                                break;
+
+                            case MainMenu.ChangePlace:
+                                goalslist = SelectGoal();
+                                int c = Input.ReadInt("Enter task current item #");
+                                int n = Input.ReadInt("Enter the new item #");
+                                goalslist.ChangePriority(c - 1, n - 1);
+                                break;
+
+
+                            case MainMenu.MoveTask:
+                                string current = Input.ReadString("Name of the current category");
+                                goalslist = _hub.GetGoalsList(current);
+                                goal = ChooseGoal(goalslist);
+                                string updated = Input.ReadString("Name of the new category");
+                                _hub.MoveTask(goal, current, updated);
+                                break;
+
+                            case MainMenu.Exit:
+                            default:
+                                break;
+                        }
+                    } while (_choice != MainMenu.Exit);
+                }
+            }
+
+
+            class LastCodeV2
+            {
+                static void Main(string[] args)
+                {
+                    var controller = new GoalControl();
+                    controller.Start();
+                }
+            }
+        }
+    }
+}
+
+
+Fixed Code
+
+/*
+using System;
+using System.Linq;
+using System.Collections.Generic;
+
+
+namespace DuplicateCode
+{
+    class FixedCode
+    {
+
+
+        public static string ReadString(string prompt)
+        {
+            Console.WriteLine(prompt);
+            Console.Write("|> ");
+            return Console.ReadLine();
+        }
+
+        static int MaxLength(Dictionary<string, List<string>> goals)
+        {
+            return goals.Values.Max(list => list.Count);
+        }
+
+        static void Print(Dictionary<string, List<string>> goals)
+        {
+            int max = MaxLength(goals);
+
+            Console.ForegroundColor = ConsoleColor.Green;
+            Console.WriteLine(new string(' ', 12) + "CATEGORIES");
+            Console.WriteLine(new string(' ', 10) + new string('-', 94));
+            Console.WriteLine("{0,10}", "List No.");
+            foreach (var category in goals.Keys)
+            {
+                Console.WriteLine("{0,30}|", category);
+            }
+            Console.WriteLine();
+            Console.WriteLine(new string(' ', 10) + new string('-', 94));
+            for (int i = 0; i < max; i++)
+            {
+                Console.WriteLine("{0,10}", i + 1);
+                foreach (var list in goals.Values)
+                {
+                    if (list.Count > i)
+                        Console.WriteLine("{0,30}|", list[i]);
+                    else
+                    {
+                        Console.WriteLine("{0,30}|", "NA");
+                    }
+                    Console.WriteLine();
+                }
+                Console.ResetColor();
+            }
+        }
+
+        static void Main(string[] args)
+        {
+            var goals = new Dictionary<string, List<string>>();
+            goals["personal"] = new List<string>();
+            goals["work"] = new List<string>();
+            goals["family"] = new List<string>();
+
+            string category;
+            string goal;
+
+            while (true)
+            {
+                Console.Clear();
+                Print(goals);
+                category = ReadString("\nSelect where you want to place this goal: " + "Personal, Work, Family or Quit").ToLower();
+                if (category.ToLower() == "quit")
+                    break;
+
+            
+                goal = ReadString("Write out your Goals today (30 symbols max )"); 
+                if (goal.Length > 30)
+                {
+                    goal = goal.Substring(0,30);
+                }
+
+                try
+                {
+                    goals[category].Add(goal);
+                }
+                catch (ArgumentException)
+                {
+                    continue;
+                }
+
+            }
+        }
+    }
+}
+*/
+    
+
+
+
+
+
